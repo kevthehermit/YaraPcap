@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 '''
-Copyright (C) 2012-2013 Kevin Breen.
-YaraMail
-Python script to YaraScan HTTP Streams From a PCAP
+Copyright (C) 2013 Kevin Breen.
+YaraPCAP
+Yara HTTP PCAP Scanner, Scans HTTP Streams from a PCAP with YARA
 '''
 __description__ = 'Yara HTTP PCAP Scanner, Scans HTTP Streams from a PCAP with YARA'
 __author__ = 'Kevin Breen'
 __version__ = '0.1'
-__date__ = '2013/06/11'
+__date__ = '2013/07/29'
 
 import os
 import sys
@@ -22,50 +22,65 @@ except:
 	print "Failed to Import Yara"
 	sys.exit()
 osType = platform.system()
+
+# User Configurable Area
+# SET THE PATH FOR TCPFLOW
 if osType == "Windows":
 	tcpFlowPath = "C:\\Users\\Kevin\\Documents\\Projects\\YaraPcap\\tcpflow64.exe"
 	if not os.path.exists(tcpFlowPath):
-		print "TCPFlow not found Please Check Path (https://github.com/simsong/tcpflow)"
-		sys.exit
+		print "TCPFlow not found Please Check Path or Install (https://github.com/simsong/tcpflow)"
+		sys.exit()
 if osType == "Linux":
 	tcpFlowPath = "/usr/local/bin/tcpflow"
 	if not os.path.exists(tcpFlowPath):
 		print "TCPFlow Not Found, Please check path or Install (https://github.com/simsong/tcpflow)"
-		sys.exit
+		sys.exit()
+# End User Configurable Area
 
 def main():
 	parser = OptionParser(usage='usage: %prog [options] rulefile pcapfile\n' + __description__, version='%prog ' + __version__)
-	parser.add_option("-r", "--report", dest="report", help="Write Results To File", metavar="FILE")
-	parser.add_option("-s", "--save", action='store_true', default=False, help="DIR To Save Processed Files after Scanning")
+	parser.add_option("-r", "--report", dest="report", help="Report File", metavar="FILE")
+	parser.add_option("-s", "--save", dest='saveDir', help="DIR To Save Matching Files")
 	(options, args) = parser.parse_args()
 	
 	if len(args) != 2:
 		parser.print_help()
+		sys.exit()
 	if not options.report:
 		parser.error("Please Specify Report Location")
 		sys.exit()
-	if options.save:
-		tmpDir = options.save
-	elif not options.save:
-		tmpDir = tempfile.mkdtemp()
-	processPcap().Process(args[0], tmpDir)
-	yaraRules = yara.compile(args[1])
+	if options.saveDir:
+		reportFile = os.path.join(options.saveDir, options.report)
+	else:
+		reportFile = options.saveDir
+	tmpDir = tempfile.mkdtemp()
+	processPcap().Process(args[1], tmpDir)
+	yaraRules = yara.compile(args[0])
 	print "Scanning Files With Yara"
-	for object in os.listdir(tmpDir):
-		yaraScan().scanner(os.path.join(tmpDir, object), yaraRules)
+	for httpReq in os.listdir(tmpDir):
+		results = yaraScan().scanner(os.path.join(tmpDir, httpReq), yaraRules)
+		if results:
+			if not os.path.exists(options.saveDir):
+				os.mkdir(options.saveDir)
+			print httpReq
+			reportMain(reportFile, httpReq, results)
+		if results and options.saveDir:
+			shutil.copyfile(os.path.join(tmpDir, httpReq), os.path.join(options.saveDir, httpReq))
 	print "Scanning Complete"
-	'''if not options.save:
-		print "Removing Temporary Directories"
-		shutil.rmtree(tmpDir)'''
+	print "Report Written to ", reportFile
+	if options.saveDir:
+		print "Matching Files Written to ", options.saveDir
+	print "Removing Temporary Directories"
+	shutil.rmtree(tmpDir)		
 
 class processPcap:
 	def Process(self, pcap, tmpDir):
+		print pcap
 		shutil.copyfile(pcap, os.path.join(tmpDir, "raw.pcap"))
 		print "Processing PCAP File For HTTP Streams"
 		retcode = subprocess.call("(cd %s && %s -AH -r %s)"%(os.path.join(tmpDir), tcpFlowPath, "raw.pcap"), shell=True)
 		return tmpDir
-
-			
+		
 class yaraScan:
 	def scanner(self, scanfile, yaraRules):
 		matches = []
@@ -75,12 +90,10 @@ class yaraScan:
 		return matches
 		
 class reportMain:
-	def __init__(self, report, att, results):
-		with open(report, "a") as f:
+	def __init__(self, report, fileName, results):
+		with open(report, "w") as f:
 			f.write("----------\n")
-			f.write("From: %s\n" % att["from"])
-			f.write("Subject: %s\n" % att["subject"])
-			f.write("Att Name: %s\n" % att["msg"])
+			f.write("File: %s\n" % fileName)
 			f.write("Matched Rules: \n")
 			for m in results:
 				f.write(m["name"] + "\n")
