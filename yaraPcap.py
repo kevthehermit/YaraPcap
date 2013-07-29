@@ -23,7 +23,7 @@ except:
 	sys.exit()
 osType = platform.system()
 
-# User Configurable Area
+
 # SET THE PATH FOR TCPFLOW
 if osType == "Windows":
 	tcpFlowPath = "C:\\Users\\Kevin\\Documents\\Projects\\YaraPcap\\tcpflow64.exe"
@@ -35,37 +35,34 @@ if osType == "Linux":
 	if not os.path.exists(tcpFlowPath):
 		print "TCPFlow Not Found, Please check path or Install (https://github.com/simsong/tcpflow)"
 		sys.exit()
-# End User Configurable Area
+# End
 
 def main():
 	parser = OptionParser(usage='usage: %prog [options] rulefile pcapfile\n' + __description__, version='%prog ' + __version__)
-	parser.add_option("-r", "--report", dest="report", help="Report File", metavar="FILE")
+	parser.add_option("-r", "--report", dest="report", help="Report File", default="report.txt", metavar="FILE")
 	parser.add_option("-s", "--save", dest='saveDir', help="DIR To Save Matching Files")
 	(options, args) = parser.parse_args()
 	
 	if len(args) != 2:
 		parser.print_help()
 		sys.exit()
-	if not options.report:
-		parser.error("Please Specify Report Location")
-		sys.exit()
 	if options.saveDir:
-		reportFile = os.path.join(options.saveDir, options.report)
+		reportFile = os.path.join(options.saveDir, "report.txt")
 	else:
-		reportFile = options.saveDir
+		reportFile = options.report
 	tmpDir = tempfile.mkdtemp()
 	processPcap().Process(args[1], tmpDir)
 	yaraRules = yara.compile(args[0])
 	print "Scanning Files With Yara"
 	for httpReq in os.listdir(tmpDir):
 		results = yaraScan().scanner(os.path.join(tmpDir, httpReq), yaraRules)
-		if results:
+		if results and options.saveDir:
 			if not os.path.exists(options.saveDir):
 				os.mkdir(options.saveDir)
-			print httpReq
-			reportMain(reportFile, httpReq, results)
-		if results and options.saveDir:
 			shutil.copyfile(os.path.join(tmpDir, httpReq), os.path.join(options.saveDir, httpReq))
+		if results:
+			print "   Match Found ", httpReq
+			reportMain(reportFile, httpReq, results)
 	print "Scanning Complete"
 	print "Report Written to ", reportFile
 	if options.saveDir:
@@ -91,7 +88,7 @@ class yaraScan:
 		
 class reportMain:
 	def __init__(self, report, fileName, results):
-		with open(report, "w") as f:
+		with open(report, "a") as f:
 			f.write("----------\n")
 			f.write("File: %s\n" % fileName)
 			f.write("Matched Rules: \n")
