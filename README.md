@@ -13,9 +13,9 @@ Yara Scanner For IMAP Feeds and saved Streams
 
 ###Usage
 - Simple report
- python yaraPcap.py -r sampleReport.txt sample.yar sample.pcap
+ "python yaraPcap.py -r sampleReport.txt sample.yar sample.pcap"
 - Save Matching Files
- python yaraPcap.py -s SampleDir sample.yar sample.pcap
+ "python yaraPcap.py -s SampleDir sample.yar sample.pcap"
 
 ###Requirements
 -Python
@@ -23,7 +23,6 @@ Yara Scanner For IMAP Feeds and saved Streams
 -TCPFlow 1.3 - https://github.com/simsong/tcpflow
 
 ###ToDo
-
 -Save Report as XML
 -Add More Detail to the Report
 
