@@ -21,6 +21,7 @@ Yara Scanner For IMAP Feeds and saved Streams
 - Python
 - Yara / PyYara
 - TCPFlow 1.3 - https://github.com/simsong/tcpflow
+- For windows edit the Script to point to your copy of the tcpflow binary. Line 29
 
 ###ToDo
 - Save Report as XML
